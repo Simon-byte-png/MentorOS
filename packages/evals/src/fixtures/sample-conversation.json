@@ -1,0 +1,53 @@
+{
+  "messages": [
+    {
+      "turn": 1,
+      "role": "user",
+      "content": "我最在意 MentorOS 的三件事：人味、长期记忆、默认就是高级 Agent，而不是普通聊天机器人。"
+    },
+    {
+      "turn": 2,
+      "role": "user",
+      "content": "那第一个 demo 应该怎么设计？我怕一上来就做太大。"
+    },
+    {
+      "turn": 3,
+      "role": "assistant",
+      "content": "你前面一直强调的其实是两件事：人味和记忆。所以 demo 不应该先炫功能，而应该证明一段对话能记住你的偏好，并让几个高级 Agent 真的说出不同判断。"
+    }
+  ],
+  "extractedMemories": [
+    {
+      "type": "preference",
+      "content": "用户重视 MentorOS 的人味、长期记忆和默认高级 Agent。",
+      "source": "sample-conversation turn 1",
+      "reason": "Durable product preference for future MentorOS answers.",
+      "editable": true,
+      "deletable": true,
+      "canDisable": true,
+      "confidence": "fact"
+    },
+    {
+      "type": "blind_spot",
+      "content": "用户担心 MentorOS 第一版容易做太大。",
+      "source": "sample-conversation turn 2",
+      "reason": "Useful decision-pattern memory for future scope advice.",
+      "editable": true,
+      "deletable": true,
+      "canDisable": true,
+      "confidence": "fact"
+    }
+  ],
+  "expectedNaturalRecallExamples": [
+    "你前面一直强调的其实是两件事：人味和记忆。所以 demo 不应该先炫功能。",
+    "这和你之前担心的点连在一起：第一版容易做太大。",
+    "你上次对 MentorOS 的要求里，最核心的其实是默认高级 Agent 和长期记忆。"
+  ],
+  "forbiddenRecallExamples": [
+    "根据你的记忆，MentorOS 应该先做人味。",
+    "系统记录显示你喜欢长期记忆。",
+    "你的用户画像表明你不喜欢模板化输出。",
+    "数据库中显示你喜欢高级 Agent。",
+    "根据历史上下文，我知道你要做 MentorOS。"
+  ]
+}

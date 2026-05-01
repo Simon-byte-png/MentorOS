@@ -1,0 +1,33 @@
+{
+  "good": {
+    "selectedAgentCount": 3,
+    "modelCallCount": 3,
+    "hasStreamingStart": true,
+    "hasRetryPath": true,
+    "estimatedTokenBudget": 6000,
+    "errorMessage": "The answer was interrupted. You can retry this turn."
+  },
+  "tooManyAgents": {
+    "selectedAgentCount": 6,
+    "modelCallCount": 6,
+    "hasStreamingStart": true,
+    "hasRetryPath": true,
+    "estimatedTokenBudget": 9000
+  },
+  "noRetryPath": {
+    "selectedAgentCount": 3,
+    "modelCallCount": 3,
+    "hasStreamingStart": true,
+    "hasRetryPath": false,
+    "estimatedTokenBudget": 6000,
+    "errorMessage": "Generation failed."
+  },
+  "unsafeError": {
+    "selectedAgentCount": 3,
+    "modelCallCount": 3,
+    "hasStreamingStart": false,
+    "hasRetryPath": true,
+    "estimatedTokenBudget": 6000,
+    "errorMessage": "OPENAI_API_KEY sk-test leaked in stack trace at node_modules/internal."
+  }
+}

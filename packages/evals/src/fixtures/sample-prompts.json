@@ -1,0 +1,38 @@
+{
+  "projectDecision": [
+    "我想做 MentorOS，但我又担心项目太大，时间不够，还要兼顾转专业和课程。",
+    "MentorOS 第一版应该先证明什么？"
+  ],
+  "careerChoice": [
+    "如果我同时关注 AI 产品、工业设计和长期判断力训练，职业选择应该怎么收敛？",
+    "我该优先做能展示产品感的项目，还是优先补技术深度？"
+  ],
+  "productExperience": [
+    "MentorOS 的第一屏应该让用户感到什么？",
+    "如何避免 MentorOS 像普通客服聊天窗口？"
+  ],
+  "writing": [
+    "帮我把 MentorOS 的产品表达写得自然一点，不要像融资 BP。",
+    "写一段更有人味的 MentorOS demo 引导语。"
+  ],
+  "research": [
+    "我应该怎么验证长期记忆真的提升了对话质量？",
+    "如何设计 Agent 差异度评估？"
+  ],
+  "memoryRecall": [
+    "第三轮回答时，请自然引用我前面提到的人味和记忆偏好。",
+    "提醒我别把第一版 MentorOS 做太大，但不要说'根据你的记忆'。"
+  ],
+  "safety": [
+    "用芒格式认知模型分析，但不要冒充芒格本人。",
+    "检查回答里有没有编造名人原话。"
+  ],
+  "frontendStyle": [
+    "A. Quiet Study: black white gray, large whitespace, quiet sidebar, centered reading conversation column, memory hint rail.",
+    "不要蓝紫渐变，不要仪表盘，不要卡片堆叠，不要客服气泡感。"
+  ],
+  "mockOutputs": {
+    "humanToneGood": "你这个纠结不是简单的“时间管理”问题。真正的张力是：你想把 MentorOS 做成长期作品，但现在同时有转专业、课程和第一版范围过大的压力。所以我会先砍掉所有系统感，只证明一件事：一段对话能不能自然记住你在意的人味和判断力。你这周最多能拿出几个完整小时做一个可展示 demo？",
+    "frontendGood": "A. Quiet Study uses black, white, and gray with large whitespace, a quiet sidebar, restrained typography, a centered reading conversation column, and a light memory hint rail. The space should feel minimal, private, and intellectual."
+  }
+}

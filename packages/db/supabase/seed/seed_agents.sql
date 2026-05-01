@@ -1,0 +1,15 @@
+-- MentorOS Agent seed placeholders.
+--
+-- There is intentionally no agents table in the initial database schema.
+-- Agent identity, display names, and cognitive model metadata are currently
+-- owned by the packages/agents registry.
+--
+-- TODO(Window B/C): if Agent metadata becomes user-editable or database-backed,
+-- add an agents table and convert these placeholders into insert statements.
+--
+-- slug: munger   display_name: Munger
+-- slug: duan     display_name: Duan
+-- slug: naval    display_name: Naval
+-- slug: feynman  display_name: Feynman
+-- slug: jobs     display_name: Jobs
+-- slug: taleb    display_name: Taleb

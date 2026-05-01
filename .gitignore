@@ -1,0 +1,29 @@
+# dependencies
+node_modules/
+**/node_modules/
+
+# Next.js
+.next/
+**/.next/
+out/
+
+# build outputs
+dist/
+build/
+coverage/
+
+# turbo
+.turbo/
+**/.turbo/
+
+# environment
+.env
+.env.*
+!.env.example
+
+# vercel
+.vercel/
+
+# system
+.DS_Store
+*.log

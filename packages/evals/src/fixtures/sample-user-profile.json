@@ -1,0 +1,35 @@
+{
+  "identityContext": {
+    "school": "浙江大学",
+    "role": "student",
+    "locationContext": "China",
+    "providedByUser": true
+  },
+  "currentGoals": [
+    "Build MentorOS as a long-term AI product and judgment-training project.",
+    "Explore AI product design with serious human tone and memory.",
+    "Balance MentorOS with transfer-major preparation and coursework."
+  ],
+  "productPreferences": [
+    "Natural language with real conversation texture.",
+    "Clear judgment instead of neutral template output.",
+    "Default advanced Agents with distinct reasoning styles.",
+    "Memory should be recalled naturally and only when useful."
+  ],
+  "knownProjects": [
+    {
+      "name": "MentorOS",
+      "description": "An intellectual dialogue system with long-term memory, humane language texture, and multi-agent council discussion."
+    }
+  ],
+  "blindSpots": [
+    "The user can make first-version project scope too large.",
+    "The user may over-design the system before proving the core conversation loop."
+  ],
+  "communicationPreferences": [
+    "Prefer natural, opinionated, specific dialogue.",
+    "Dislike template-like output and report cadence.",
+    "Prefer questions that sharpen the next decision.",
+    "Prefer grounded disagreement over oily encouragement."
+  ]
+}
