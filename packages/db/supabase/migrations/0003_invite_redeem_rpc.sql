@@ -51,9 +51,9 @@ begin
 
   if exists (
     select 1
-      from invite_redemptions
-     where invite_code_id = v_invite_code.id
-       and user_id = p_user_id
+      from invite_redemptions as ir
+     where ir.invite_code_id = v_invite_code.id
+       and ir.user_id = p_user_id
   ) then
     return query select false, 'INVITE_CODE_ALREADY_REDEEMED'::text, v_invite_code.id;
     return;
@@ -65,21 +65,21 @@ begin
   returning id into v_redemption_id;
 
   -- ── 4. Increment used_count ──────────────────────────────────────────────
-  update invite_codes
-     set used_count = used_count + 1
-   where id = v_invite_code.id;
+  update invite_codes as ic
+     set used_count = ic.used_count + 1
+   where ic.id = v_invite_code.id;
 
   -- ── 5. Mark exhausted if this was the last use ───────────────────────────
   if v_invite_code.used_count + 1 >= v_invite_code.max_uses then
-    update invite_codes
+    update invite_codes as ic
        set status = 'exhausted'
-     where id = v_invite_code.id;
+     where ic.id = v_invite_code.id;
   end if;
 
   -- ── 6. Activate user profile ─────────────────────────────────────────────
-  update user_profiles
+  update user_profiles as up
      set access_status = 'active'
-   where user_id = p_user_id;
+   where up.user_id = p_user_id;
 
   -- ── 7. Return success ────────────────────────────────────────────────────
   return query select true, null::text, v_invite_code.id;
