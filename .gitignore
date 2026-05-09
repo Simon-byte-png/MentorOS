@@ -27,3 +27,4 @@ coverage/
 # system
 .DS_Store
 *.log
+.vercel
