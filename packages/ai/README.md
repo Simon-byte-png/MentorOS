@@ -16,9 +16,11 @@ DEEPSEEK_DEFAULT_MODEL=deepseek-v4-flash
 DEEPSEEK_HIGH_QUALITY_MODEL=deepseek-v4-pro
 ```
 
-`provider: "deepseek"` falls back to mock unless real LLM calls are enabled and
-the API key exists. The current `apps/web` chat route still sends
-`provider: "mock"`; switch that route in a later frontend/API integration stage.
+The web chat route uses `MENTOROS_CHAT_PROVIDER=auto` by default: it selects
+DeepSeek when real LLM calls are enabled and an API key exists, otherwise it
+uses the mock provider. Setting `MENTOROS_CHAT_PROVIDER=deepseek` requires the
+DeepSeek config to be complete and returns a visible configuration error if it
+is not.
 
 DeepSeek JSON mode uses the OpenAI-compatible `response_format` option. Prompts
 must explicitly request a valid JSON object, with no markdown or prose.

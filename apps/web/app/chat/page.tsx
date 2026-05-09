@@ -1,4 +1,3 @@
-import { AppShell } from "@/components/layout/app-shell";
 import { InteractiveChat } from "@/components/chat/interactive-chat";
 import {
   getCurrentAccess,
@@ -18,8 +17,6 @@ export default async function ChatPage() {
   }
 
   return (
-    <AppShell active="chat">
-      <InteractiveChat />
-    </AppShell>
+    <InteractiveChat />
   );
 }

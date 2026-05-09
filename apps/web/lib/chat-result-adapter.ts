@@ -19,7 +19,7 @@ export type ChatDialogueView = {
 
 export type EvalStatusView = {
   passed: boolean;
-  label: "质量检查通过" | "这次回答需要人工复查";
+  label: "通过" | "需要复查";
   summary: string;
 };
 
@@ -54,7 +54,7 @@ export function adaptChatResult(result: MentorOSPipelineResult): ChatResultView 
     decisionMemo: result.decisionMemo,
     evalStatus: {
       passed,
-      label: passed ? "质量检查通过" : "这次回答需要人工复查",
+      label: passed ? "通过" : "需要复查",
       summary: result.evalReport.runtimeQuality.summary
     }
   };

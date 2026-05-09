@@ -3,8 +3,8 @@
 import { useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 
-const EMAIL_SENT_MESSAGE = "登录链接已经发送。请打开邮箱继续。";
-const LOGIN_ERROR_MESSAGE = "暂时无法发送登录链接，请稍后重试。";
+const EMAIL_SENT_MESSAGE = "注册/登录链接已经发送。请打开邮箱点击链接继续。";
+const LOGIN_ERROR_MESSAGE = "暂时无法发送注册/登录链接，请稍后重试。";
 
 export function LoginForm() {
   const [email, setEmail] = useState("");
@@ -72,7 +72,7 @@ export function LoginForm() {
         disabled={pending}
         className="inline-flex h-12 w-full items-center justify-center border border-ink bg-ink px-5 text-[15px] text-white transition-colors hover:bg-transparent hover:text-ink disabled:cursor-not-allowed disabled:border-line disabled:bg-transparent disabled:text-muted"
       >
-        {pending ? "发送中..." : "发送登录链接"}
+        {pending ? "发送中..." : "发送注册/登录链接"}
       </button>
 
       {message ? (

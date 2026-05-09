@@ -1,6 +1,17 @@
 import { NextResponse } from "next/server";
-import { runMentorOSPipeline } from "@mentoros/ai";
-import type { MentorOSPipelineInput, RecentMessage, RelevantMemory } from "@mentoros/ai";
+import {
+  DeepSeekAPIError,
+  DeepSeekJSONParseError,
+  MissingDeepSeekApiKeyError,
+  RealLLMNotEnabledError,
+  runMentorOSPipeline,
+} from "@mentoros/ai";
+import type {
+  MentorOSPipelineInput,
+  ModelDepth,
+  RecentMessage,
+  RelevantMemory,
+} from "@mentoros/ai";
 import {
   createConversation,
   createDecisionMemo,
@@ -10,6 +21,7 @@ import {
   listActiveMemoriesByUser,
   listMessagesByConversation,
   recordUsageEvent,
+  updateConversation,
 } from "@mentoros/db";
 import {
   getCurrentAccess,
@@ -23,6 +35,15 @@ const INVITE_ERROR = "你的内测权限尚未激活，请先输入邀请码。"
 const QUOTA_ERROR = "今天的内测额度已用完，明天再继续。";
 const RUNTIME_ERROR =
   "MentorOS 暂时没有组织好这场讨论，请稍后重试。";
+const DEEPSEEK_CONFIG_ERROR =
+  "DeepSeek 还没有配置完整。请在 .env.local 设置 ENABLE_REAL_LLM=true 和 DEEPSEEK_API_KEY，然后重启开发服务。";
+
+type ChatPayload = {
+  userMessage: string;
+  conversationId?: string;
+  modelDepth: ModelDepth;
+  recentMessages: RecentMessage[];
+};
 
 const mockMemories: RelevantMemory[] = [
   {
@@ -97,10 +118,15 @@ export async function POST(request: Request) {
     return invalidMessageResponse();
   }
 
-  const { userMessage, conversationId: requestedConversationId } = chatPayload;
+  const {
+    userMessage,
+    conversationId: requestedConversationId,
+    modelDepth,
+    recentMessages: clientRecentMessages,
+  } = chatPayload;
 
   // --- Quota check ---
-  if (userId) {
+  if (!devBypass && userId) {
     const dailyLimit = readEnvInt("MENTOROS_DAILY_MESSAGE_LIMIT", 20);
 
     try {
@@ -185,7 +211,9 @@ export async function POST(request: Request) {
   // --- Load recent messages ---
   let recentMessages: RecentMessage[] = [];
 
-  if (!devBypass && conversationId) {
+  if (devBypass) {
+    recentMessages = clientRecentMessages;
+  } else if (conversationId) {
     try {
       const messages = await listMessagesByConversation(conversationId);
       // 取最近 10 条，转换为 pipeline 格式
@@ -245,9 +273,19 @@ export async function POST(request: Request) {
   }
 
   // --- Resolve provider config ---
-  const provider = readEnvChoice("MENTOROS_CHAT_PROVIDER", ["mock", "deepseek"], "mock");
-  const costSensitive = readEnvBool("MENTOROS_COST_SENSITIVE", true);
-  const qualityMode = readEnvBool("MENTOROS_QUALITY_MODE", false);
+  const providerConfig = resolveChatProviderConfig();
+
+  if (!providerConfig.ok) {
+    return NextResponse.json(
+      { ok: false, error: providerConfig.error },
+      { status: 500 },
+    );
+  }
+
+  const provider = providerConfig.provider;
+  warnings.push(...providerConfig.warnings);
+  const costSensitive = modelDepth === "flash";
+  const qualityMode = modelDepth === "pro";
 
   // --- Run pipeline ---
   try {
@@ -260,6 +298,7 @@ export async function POST(request: Request) {
       provider,
       mock: provider === "mock",
       mode: "decision",
+      modelDepth,
       costSensitive,
       qualityMode,
     };
@@ -291,6 +330,8 @@ export async function POST(request: Request) {
           decisionMemoTitle: result.decisionMemo.title,
           requiresReview: result.metadata.requiresReview,
           warnings: result.metadata.warnings,
+          provider: result.metadata.provider,
+          modelDepth: result.metadata.modelDepth,
         };
 
         const savedMessage = await createMessage({
@@ -301,6 +342,9 @@ export async function POST(request: Request) {
           metadata: assistantMetadata,
         });
         assistantMessageId = savedMessage.id;
+        await updateConversation(conversationId, {
+          updated_at: new Date().toISOString(),
+        });
       } catch (error) {
         console.error("[chat] createMessage (assistant) failed:", error);
         // 不阻断返回，但记录警告
@@ -337,7 +381,7 @@ export async function POST(request: Request) {
     }
 
     // --- Record usage event (fire-and-forget) ---
-    if (userId) {
+    if (!devBypass && userId) {
       const usageSummary = result.metadata.usageSummary;
       const primaryCall = usageSummary.calls[0];
 
@@ -353,6 +397,7 @@ export async function POST(request: Request) {
         metadata: {
           callCount: usageSummary.calls.length,
           requiresReview: result.metadata.requiresReview,
+          modelDepth: result.metadata.modelDepth,
         },
       }).catch((err: unknown) => {
         console.warn("[chat] recordUsageEvent failed:", err);
@@ -380,15 +425,15 @@ export async function POST(request: Request) {
   } catch (error) {
     console.error("[chat] pipeline error:", error);
     return NextResponse.json(
-      { ok: false, error: RUNTIME_ERROR },
-      { status: 500 },
+      { ok: false, error: getPipelineErrorMessage(error) },
+      { status: getPipelineErrorStatus(error) },
     );
   }
 }
 
 // --- Helpers ---
 
-function readChatPayload(payload: unknown): { userMessage: string; conversationId?: string } | null {
+function readChatPayload(payload: unknown): ChatPayload | null {
   if (!payload || typeof payload !== "object") return null;
 
   const obj = payload as Record<string, unknown>;
@@ -399,8 +444,31 @@ function readChatPayload(payload: unknown): { userMessage: string; conversationI
   if (trimmed.length === 0) return null;
 
   const conversationId = typeof obj.conversationId === "string" ? obj.conversationId : undefined;
+  const modelDepth: ModelDepth = obj.modelDepth === "pro" ? "pro" : "flash";
+  const recentMessages = Array.isArray(obj.recentMessages)
+    ? obj.recentMessages
+        .map(readRecentMessage)
+        .filter((message): message is RecentMessage => Boolean(message))
+        .slice(-10)
+    : [];
 
-  return { userMessage: trimmed, conversationId };
+  return { userMessage: trimmed, conversationId, modelDepth, recentMessages };
+}
+
+function readRecentMessage(value: unknown): RecentMessage | null {
+  if (!value || typeof value !== "object") return null;
+
+  const record = value as Record<string, unknown>;
+  const role = typeof record.role === "string" ? record.role : null;
+  const content = typeof record.content === "string" ? record.content.trim() : "";
+
+  if (!role || content.length === 0) return null;
+
+  return {
+    role,
+    content,
+    speaker: typeof record.speaker === "string" ? record.speaker : undefined,
+  };
 }
 
 function invalidMessageResponse() {
@@ -431,4 +499,75 @@ function readEnvChoice<T extends string>(
   const raw = process.env[key];
   if (raw === undefined || raw === "") return fallback;
   return (choices as readonly string[]).includes(raw) ? (raw as T) : fallback;
+}
+
+type ChatProviderConfig =
+  | {
+      ok: true;
+      provider: "mock" | "deepseek";
+      warnings: string[];
+    }
+  | {
+      ok: false;
+      error: string;
+    };
+
+function resolveChatProviderConfig(): ChatProviderConfig {
+  const requested = readEnvChoice(
+    "MENTOROS_CHAT_PROVIDER",
+    ["auto", "mock", "deepseek"],
+    "auto",
+  );
+  const hasDeepSeekKey = Boolean(process.env.DEEPSEEK_API_KEY?.trim());
+  const realLlmEnabled = readEnvBool("ENABLE_REAL_LLM", false);
+
+  if (requested === "mock") {
+    return { ok: true, provider: "mock", warnings: [] };
+  }
+
+  if (requested === "deepseek") {
+    if (!realLlmEnabled || !hasDeepSeekKey) {
+      return { ok: false, error: DEEPSEEK_CONFIG_ERROR };
+    }
+
+    return { ok: true, provider: "deepseek", warnings: [] };
+  }
+
+  if (realLlmEnabled && hasDeepSeekKey) {
+    return { ok: true, provider: "deepseek", warnings: [] };
+  }
+
+  return {
+    ok: true,
+    provider: "mock",
+    warnings: ["DeepSeek 未配置完整，当前使用本地 mock provider。"],
+  };
+}
+
+function getPipelineErrorStatus(error: unknown): number {
+  return error instanceof DeepSeekAPIError ||
+    error instanceof DeepSeekJSONParseError ||
+    error instanceof MissingDeepSeekApiKeyError ||
+    error instanceof RealLLMNotEnabledError
+    ? 502
+    : 500;
+}
+
+function getPipelineErrorMessage(error: unknown): string {
+  if (
+    error instanceof MissingDeepSeekApiKeyError ||
+    error instanceof RealLLMNotEnabledError
+  ) {
+    return DEEPSEEK_CONFIG_ERROR;
+  }
+
+  if (error instanceof DeepSeekJSONParseError) {
+    return "DeepSeek 已返回内容，但这次没有按圆桌结构输出。请重试一次。";
+  }
+
+  if (error instanceof DeepSeekAPIError) {
+    return `DeepSeek 调用失败：${error.message}`;
+  }
+
+  return RUNTIME_ERROR;
 }

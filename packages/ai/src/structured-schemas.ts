@@ -11,6 +11,8 @@ import type { RuntimeUsageSummary } from "./providers/usage-types";
 
 export type ConversationMode = "decision" | "writing" | "review" | "general";
 
+export type ModelDepth = "flash" | "pro";
+
 export type MemoryType =
   | "profile"
   | "goal"
@@ -37,6 +39,7 @@ export interface RelevantMemory {
 
 export interface MentorOSPipelineInput {
   provider?: LLMProviderName;
+  modelDepth?: ModelDepth;
   qualityMode?: boolean;
   costSensitive?: boolean;
   userId?: string;
@@ -167,6 +170,7 @@ export interface MentorOSPipelineResult {
   metadata: {
     provider: LLMProviderName;
     requestedProvider: LLMProviderName;
+    modelDepth: ModelDepth;
     modelPlan: ModelPlan;
     usageSummary: RuntimeUsageSummary;
     requiresReview: boolean;
@@ -180,6 +184,9 @@ export interface RuntimeGenerationOptions {
   modelPlan?: ModelPlan;
   qualityMode?: boolean;
   costSensitive?: boolean;
+  modelDepth?: ModelDepth;
+  agentAnalysisMaxTokens?: number;
+  dialogueMaxTokens?: number;
 }
 
 export function mapSelectedAgent(

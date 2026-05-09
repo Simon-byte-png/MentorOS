@@ -51,7 +51,7 @@ export function Sidebar({ active }: SidebarProps) {
 
       <div className="mt-auto border-t border-line pt-5 text-[13px] text-muted">
         <div className="mb-2 h-px w-10 bg-ink/30" />
-        Memory On
+        记忆开启
       </div>
     </aside>
   );

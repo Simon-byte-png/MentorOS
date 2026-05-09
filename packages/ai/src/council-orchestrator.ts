@@ -48,41 +48,54 @@ export async function runCouncil(
   const runtimeAgents = selected.map((agent, index) =>
     mapSelectedAgent(agent, profiles[index])
   );
-  const agentOutputs: CouncilAgentOutput[] = [];
-  const usage: LLMUsage[] = [];
-
-  for (const agent of runtimeAgents) {
-    const analysis = buildMockAgentAnalysis(agent.slug, context);
+  const agentResults = await Promise.all(runtimeAgents.map(async (agent) => {
+    const fallbackAnalysis = buildMockAgentAnalysis(agent.slug, context);
     const call = await provider.callText(
       [
         {
           role: "system",
-          content: "Use the Agent only as a cognitive model lens. No impersonation and no fake quotes."
+          content:
+            "你是 MentorOS 的认知模型分析器。只能把 Agent 当作公开思想抽象出的认知模型，不代表本人观点，不要编造引语。请用中文给出一段自然、具体、有判断的分析。"
         },
         {
           role: "user",
-          content: `${context.userMessage}\n\nAgent: ${agent.slug}`
+          content: [
+            `用户问题：${context.userMessage}`,
+            `认知模型：${agent.displayName}`,
+            `角色：${agent.roleInCouncil}`,
+            "请只输出这一位认知模型的分析，不要写报告标题。"
+          ].join("\n")
         }
       ],
-      { purpose: "agent_analysis", model }
+      {
+        purpose: "agent_analysis",
+        model,
+        maxTokens: options.agentAnalysisMaxTokens
+      }
     );
     const callUsage = {
       ...call.usage,
       model
     };
 
-    usage.push(callUsage);
-    agentOutputs.push({
-      agentSlug: agent.slug,
-      displayName: agent.displayName,
-      roleInCouncil: agent.roleInCouncil,
-      analysis,
-      keyPoints: buildAgentKeyPoints(agent.slug),
-      suggestedAction: buildAgentSuggestedAction(agent.slug),
-      caution: buildAgentCaution(agent.slug),
+    return {
+      output: {
+        agentSlug: agent.slug,
+        displayName: agent.displayName,
+        roleInCouncil: agent.roleInCouncil,
+        analysis: provider.name === "mock"
+          ? fallbackAnalysis
+          : call.text.trim() || fallbackAnalysis,
+        keyPoints: buildAgentKeyPoints(agent.slug),
+        suggestedAction: buildAgentSuggestedAction(agent.slug),
+        caution: buildAgentCaution(agent.slug),
+        usage: callUsage
+      } satisfies CouncilAgentOutput,
       usage: callUsage
-    });
-  }
+    };
+  }));
+  const agentOutputs = agentResults.map((result) => result.output);
+  const usage = agentResults.map((result) => result.usage);
 
   return {
     selection,

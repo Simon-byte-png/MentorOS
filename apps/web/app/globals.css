@@ -40,3 +40,16 @@ textarea {
   background: #111;
   color: #fff;
 }
+
+@keyframes thinkerPulse {
+  0%,
+  100% {
+    opacity: 0.42;
+    transform: scale(0.92);
+  }
+
+  45% {
+    opacity: 1;
+    transform: scale(1.08);
+  }
+}

@@ -15,6 +15,7 @@ import {
 import type {
   MentorOSPipelineInput,
   MentorOSPipelineResult,
+  ModelDepth,
   RuntimeGenerationOptions
 } from "./structured-schemas";
 
@@ -22,27 +23,41 @@ export async function runMentorOSPipeline(
   input: MentorOSPipelineInput
 ): Promise<MentorOSPipelineResult> {
   const requestedProvider = input.provider ?? "mock";
+  const modelDepth = resolveModelDepth(input);
   const warnings: string[] = [];
   const provider = resolveRuntimeProvider(requestedProvider, input.mock, warnings);
   const modelPlan = buildModelPlan({
     provider: requestedProvider,
-    costSensitive: input.costSensitive,
-    qualityMode: input.qualityMode
+    costSensitive: modelDepth === "flash",
+    qualityMode: modelDepth === "pro"
   });
   const options: RuntimeGenerationOptions = {
     provider,
     providerName: provider.name,
     modelPlan,
-    qualityMode: input.qualityMode,
-    costSensitive: input.costSensitive
+    qualityMode: modelDepth === "pro",
+    costSensitive: modelDepth === "flash",
+    modelDepth,
+    agentAnalysisMaxTokens: modelDepth === "pro" ? 900 : 520,
+    dialogueMaxTokens: modelDepth === "pro" ? 2000 : 1100
   };
   const context = buildConversationContext(input);
   const council = await runCouncil(context, options);
   const dialogue = await runDialogueDirector({ context, council }, options);
-  const memoryExtraction = await extractMemories({ context, dialogue }, options);
+  const backgroundOptions = provider.name === "deepseek"
+    ? {
+        ...options,
+        provider: createMockProvider(),
+        providerName: "mock" as const
+      }
+    : options;
+  const memoryExtraction = await extractMemories(
+    { context, dialogue },
+    backgroundOptions
+  );
   const decisionMemo = await generateDecisionMemo(
     { context, council, dialogue },
-    options
+    backgroundOptions
   );
   const usageCalls = buildUsageCalls([
     ...council.usage.map((usage) => ({
@@ -83,12 +98,21 @@ export async function runMentorOSPipeline(
     metadata: {
       provider: provider.name,
       requestedProvider,
+      modelDepth,
       modelPlan,
       usageSummary: buildRuntimeUsageSummary(provider.name, usageCalls),
       requiresReview,
       warnings
     }
   };
+}
+
+function resolveModelDepth(input: MentorOSPipelineInput): ModelDepth {
+  if (input.modelDepth === "pro" || input.qualityMode === true || input.costSensitive === false) {
+    return "pro";
+  }
+
+  return "flash";
 }
 
 function resolveRuntimeProvider(

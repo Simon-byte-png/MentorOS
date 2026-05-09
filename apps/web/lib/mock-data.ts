@@ -28,13 +28,52 @@ export type EmptyStateCopy = {
   railText: string;
 };
 
+export type RoundtableThinker = {
+  id: string;
+  name: string;
+  status: string;
+};
+
 export const complianceNote =
   "基于公开思想抽象出的认知模型，不代表本人观点。";
 
 export const thinkingStatuses = [
-  "正在读取相关记忆……",
+  "正在整理上下文……",
   "正在召集认知模型……",
-  "Dialogue Director 正在组织讨论……"
+  "圆桌主持正在组织讨论……"
+];
+
+export const roundtableThinkers: RoundtableThinker[] = [
+  {
+    id: "director",
+    name: "圆桌主持",
+    status: "先把问题放慢"
+  },
+  {
+    id: "munger",
+    name: "芒格式认知模型",
+    status: "检查代价与反面"
+  },
+  {
+    id: "feynman",
+    name: "费曼式认知模型",
+    status: "寻找最小事实"
+  },
+  {
+    id: "naval",
+    name: "Naval 式认知模型",
+    status: "判断长期复利"
+  },
+  {
+    id: "taleb",
+    name: "塔勒布式认知模型",
+    status: "寻找脆弱点"
+  },
+  {
+    id: "jobs",
+    name: "乔布斯式认知模型",
+    status: "收紧体验判断"
+  }
 ];
 
 export const emptyStateCopy: EmptyStateCopy = {
@@ -69,7 +108,7 @@ export const demoChatMessages: CouncilMessage[] = [
   },
   {
     id: "director-1",
-    speaker: "Dialogue Director",
+    speaker: "圆桌主持",
     role: "director",
     text:
       "我先把这个问题放慢一点。你现在真正要判断的，不只是这个项目能不能做出来，而是它会不会把你带向一个更长期的身份：一个能把想法、产品和判断力连接起来的人。"
@@ -104,7 +143,7 @@ export const demoChatMessages: CouncilMessage[] = [
   },
   {
     id: "director-2",
-    speaker: "Dialogue Director",
+    speaker: "圆桌主持",
     role: "director",
     text:
       "所以这一轮先不要追求完整。先做一个 20 分钟能演示的版本：输入一个真实问题，系统召集几个视角，输出一段明显有差异的对话，并在下一轮自然记得你最在意“人味”和“记忆”。"

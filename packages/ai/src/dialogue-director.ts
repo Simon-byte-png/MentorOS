@@ -13,6 +13,13 @@ export interface DialogueDirectorInput {
   council: CouncilRunResult;
 }
 
+type GeneratedDialogue = {
+  opening?: unknown;
+  messages?: unknown;
+  summary?: unknown;
+  nextQuestion?: unknown;
+};
+
 export async function runDialogueDirector(
   input: DialogueDirectorInput,
   options: RuntimeGenerationOptions = {}
@@ -34,6 +41,50 @@ export async function runDialogueDirector(
   const fullText = [opening, ...messages.map((message) => message.content), summary, nextQuestion].join(
     "\n\n"
   );
+
+  if (provider.name !== "mock") {
+    const generated = await provider.callJson<GeneratedDialogue>(
+      [
+        {
+          role: "system",
+          content:
+            "你是 MentorOS 的圆桌主持。你要把后台认知模型的分析整理成一次自然中文对话，不要写报告，不要冒充真实人物，不要编造引语。输出 JSON object，字段为 opening、messages、summary、nextQuestion。messages 是数组，每项包含 speaker 和 content。"
+        },
+        {
+          role: "user",
+          content: buildDirectorPrompt(input, options)
+        }
+      ],
+      {
+        purpose: "dialogue_director",
+        model,
+        temperature: options.modelDepth === "pro" ? 0.62 : 0.5,
+        jsonMode: true,
+        maxTokens: options.dialogueMaxTokens
+      }
+    );
+    const normalized = normalizeGeneratedDialogue(generated.data, {
+      opening,
+      messages,
+      summary,
+      nextQuestion
+    });
+
+    return {
+      ...normalized,
+      fullText: [
+        normalized.opening,
+        ...normalized.messages.map((message) => message.content),
+        normalized.summary,
+        normalized.nextQuestion
+      ].filter(Boolean).join("\n\n"),
+      usage: {
+        ...generated.usage,
+        model
+      }
+    };
+  }
+
   const call = await provider.callText(
     [
       {
@@ -60,6 +111,107 @@ export async function runDialogueDirector(
       model
     }
   };
+}
+
+function buildDirectorPrompt(
+  input: DialogueDirectorInput,
+  options: RuntimeGenerationOptions
+): string {
+  const memories = input.context.relevantMemories
+    .map((memory) => `- ${memory.content}`)
+    .join("\n") || "- 暂无相关长期记忆";
+  const recentMessages = input.context.recentMessages
+    .slice(-8)
+    .map((message) => `${message.speaker ?? message.role}: ${message.content}`)
+    .join("\n") || "- 这是本会话第一轮";
+  const council = input.council.agentOutputs
+    .map((output) => [
+      `【${output.displayName}】`,
+      output.analysis,
+      `提醒：${output.caution}`,
+      `行动建议：${output.suggestedAction}`
+    ].join("\n"))
+    .join("\n\n");
+
+  return [
+    "运行时事实：这次回复正在由真实 LLM provider 生成，不是本地 mock。若用户询问是否已接入真实模型，请如实说明后端 provider 已进入真实调用。",
+    "",
+    `用户问题：${input.context.userMessage}`,
+    "",
+    "相关记忆：",
+    memories,
+    "",
+    "最近会话：",
+    recentMessages,
+    "",
+    "后台圆桌分析：",
+    council,
+    "",
+    "输出要求：",
+    "1. opening 像一个人正在接住用户的话，直接进入判断。",
+    input.context.recentMessages.length > 0
+      ? "2. 必须自然承接最近上下文，不要把每轮都当第一次对话。"
+      : "2. 这是本会话的第一轮，可以直接建立判断框架。",
+    optionsLine(input, options),
+    "4. messages 选择 2 到 4 位认知模型发言，每段自然中文，避免模板化。",
+    "5. summary 给出收束判断。",
+    "6. nextQuestion 给出一个可以继续聊的问题。",
+    "7. 所有 speaker 使用中文，例如“圆桌主持”“芒格式认知模型”。"
+  ].join("\n");
+}
+
+function optionsLine(
+  input: DialogueDirectorInput,
+  options: RuntimeGenerationOptions
+): string {
+  if (options.modelDepth === "pro") {
+    return "3. 当前是深度模式：回答要更充分，展开关键理由、反方意见和具体下一步，但仍保持对话感。";
+  }
+
+  return input.context.mode === "decision"
+    ? "3. 当前是快速模式：给出明确倾向和最关键理由，不要冗长。"
+    : "3. 当前是快速模式：保持自然对话，不要写成报告。";
+}
+
+function normalizeGeneratedDialogue(
+  generated: GeneratedDialogue,
+  fallback: Pick<DialogueDirectorOutput, "opening" | "messages" | "summary" | "nextQuestion">
+): Pick<DialogueDirectorOutput, "opening" | "messages" | "summary" | "nextQuestion"> {
+  const opening = asNonEmptyString(generated.opening) ?? fallback.opening;
+  const summary = asNonEmptyString(generated.summary) ?? fallback.summary;
+  const nextQuestion = asNonEmptyString(generated.nextQuestion) ?? fallback.nextQuestion;
+  const generatedMessages: DialogueMessage[] = [];
+
+  if (Array.isArray(generated.messages)) {
+    for (const message of generated.messages) {
+      if (!message || typeof message !== "object") continue;
+
+      const record = message as Record<string, unknown>;
+      const speaker = asNonEmptyString(record.speaker);
+      const content = asNonEmptyString(record.content);
+
+      if (!speaker || !content) continue;
+
+      generatedMessages.push({
+        speaker,
+        role: "agent",
+        content
+      });
+    }
+  }
+
+  return {
+    opening,
+    messages: generatedMessages.length > 0 ? generatedMessages : fallback.messages,
+    summary,
+    nextQuestion
+  };
+}
+
+function asNonEmptyString(value: unknown): string | null {
+  return typeof value === "string" && value.trim().length > 0
+    ? value.trim()
+    : null;
 }
 
 function buildOpening(

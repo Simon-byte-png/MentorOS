@@ -29,7 +29,18 @@ export function isDevBypassEnabled(): boolean {
 }
 
 export async function getCurrentAccess() {
-  const supabase = await createClient();
+  let supabase: SupabaseClient;
+
+  try {
+    supabase = await createClient();
+  } catch (error) {
+    if (!isProductionRuntime() && isMissingSupabaseConfigError(error)) {
+      return { user: null, profile: null } satisfies CurrentAccess;
+    }
+
+    throw error;
+  }
+
   const {
     data: { user },
     error,
@@ -67,4 +78,9 @@ async function getCurrentUserProfile(
   }
 
   return data as UserProfile;
+}
+
+function isMissingSupabaseConfigError(error: unknown): boolean {
+  return error instanceof Error &&
+    error.message.startsWith("Missing NEXT_PUBLIC_SUPABASE_");
 }

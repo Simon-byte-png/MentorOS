@@ -1,5 +1,10 @@
 import type { Conversation, CreateConversationInput } from "../types";
-import { getRepositoryDbClient, toDbValues, wrapRepositoryError } from "./shared";
+import {
+  assertHasUpdateValues,
+  getRepositoryDbClient,
+  toDbValues,
+  wrapRepositoryError
+} from "./shared";
 
 export async function createConversation(input: CreateConversationInput): Promise<Conversation> {
   const operation = "createConversation";
@@ -36,8 +41,28 @@ export async function listConversationsByUser(userId: string): Promise<Conversat
   }
 }
 
+export async function updateConversation(
+  id: string,
+  input: Partial<Pick<Conversation, "title" | "status" | "updated_at">>
+): Promise<Conversation> {
+  const operation = "updateConversation";
+  const values = toDbValues({ ...input });
+  assertHasUpdateValues(operation, values);
+
+  try {
+    return await getRepositoryDbClient().update<Conversation>(
+      "conversations",
+      values,
+      { filters: [{ column: "id", operator: "eq", value: id }] },
+    );
+  } catch (error) {
+    wrapRepositoryError(operation, error);
+  }
+}
+
 export const conversationsRepository = {
   createConversation,
   getConversationById,
   listConversationsByUser,
+  updateConversation,
 };

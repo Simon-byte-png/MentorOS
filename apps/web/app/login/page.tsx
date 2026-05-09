@@ -32,15 +32,15 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
           <div className="w-full max-w-[440px]">
             <p className="mb-5 text-[14px] text-muted">MentorOS Beta</p>
             <h1 className="font-serif text-[44px] leading-[1.08] tracking-normal md:text-[56px]">
-              进入 MentorOS
+              注册或登录 MentorOS
             </h1>
             <p className="mt-6 text-[17px] leading-8 text-muted">
-              当前是小规模内测。登录后需要邀请码才能使用。
+              输入邮箱后，我们会发送一个登录链接。新邮箱会自动创建账号，首次进入需要邀请码。
             </p>
 
             {hasAuthError ? (
               <p className="mt-8 border-t border-line pt-5 text-[14px] leading-6 text-muted">
-                登录链接已经失效或无法验证，请重新发送一次。
+                注册/登录链接已经失效或无法验证，请重新发送一次。
               </p>
             ) : null}
 
