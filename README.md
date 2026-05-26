@@ -1,20 +1,36 @@
 # MentorOS
 
-MentorOS is a monorepo for a long-memory, multi-agent intellectual dialogue system.
+MentorOS is a long-memory, multi-agent intellectual dialogue system. It explores a quieter form of AI conversation: remembered context, selected cognitive agents, background roundtable discussion, and a final response shaped by a dialogue director.
 
-The first working slice is a static **A. Quiet Study** frontend prototype in `apps/web`. It uses mock data only and does not connect to OpenAI, Supabase, auth, or any real backend route.
+Current status: working monorepo prototype with a Next.js frontend, mock-first AI pipeline, Supabase-ready auth/database packages, and evaluation fixtures. Real DeepSeek calls are optional and disabled by default.
 
-## Tech Plan
+## What It Does
 
-- Next.js App Router
-- TypeScript
-- Tailwind CSS
-- shadcn/ui reserved for future UI primitives
-- Supabase Auth and PostgreSQL planned
-- OpenAI API planned
-- Vercel deployment planned
+- Runs a mock-first multi-agent dialogue pipeline.
+- Selects cognitive model agents from a registry.
+- Produces structured council traces, dialogue output, memory candidates, and decision memo candidates.
+- Provides a quiet study-style web interface instead of a dashboard-heavy chat UI.
+- Includes Supabase migrations and repository layers for auth, invite access, conversations, messages, memories, and usage tracking.
+- Includes evals for tone, memory quality, agent differentiation, runtime behavior, safety, and frontend consistency.
 
-## Local Preview
+## Tech Stack
+
+- Monorepo: pnpm workspaces + Turborepo
+- Web: Next.js App Router, TypeScript, Tailwind CSS
+- AI runtime: mock provider by default, optional DeepSeek provider
+- Data: Supabase Auth and PostgreSQL schema/repositories
+- Quality: package-level TypeScript checks and evaluation fixtures
+
+## Repository Layout
+
+- `apps/web`: Next.js app, chat UI, login/invite flow, API routes
+- `packages/ai`: pipeline orchestration, providers, prompts, streaming helpers
+- `packages/agents`: cognitive model cards, registry, selection policy
+- `packages/db`: Supabase schema, repositories, server/client helpers
+- `packages/evals`: quality evals, rubrics, fixtures
+- `packages/shared`: shared types and constants
+
+## Local Development
 
 ```bash
 pnpm install
@@ -23,6 +39,23 @@ pnpm dev
 
 Open `http://localhost:3000`.
 
-## Current Stop Rule
+The default local path uses mock AI behavior. To enable real model calls, copy `.env.example`, set server-side environment variables, and explicitly opt in:
 
-Before any backend, AI, auth, or memory persistence work continues, the static frontend visual prototype must be reviewed and confirmed.
+```bash
+ENABLE_REAL_LLM=true
+DEEPSEEK_API_KEY=<your-deepseek-api-key>
+```
+
+Do not expose service role keys or model API keys to client components.
+
+## Checks
+
+```bash
+pnpm lint
+pnpm typecheck
+pnpm build
+```
+
+## License
+
+MIT

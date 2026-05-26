@@ -5,7 +5,7 @@ and only run when both conditions are true:
 
 ```bash
 ENABLE_REAL_LLM=true
-DEEPSEEK_API_KEY=...
+DEEPSEEK_API_KEY=<your-deepseek-api-key>
 ```
 
 Optional model configuration:

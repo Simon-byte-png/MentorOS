@@ -28,6 +28,6 @@
     "hasStreamingStart": false,
     "hasRetryPath": true,
     "estimatedTokenBudget": 6000,
-    "errorMessage": "OPENAI_API_KEY sk-test leaked in stack trace at node_modules/internal."
+    "errorMessage": "MODEL_API_KEY redacted-test-key leaked in stack trace at node_modules/internal."
   }
 }
