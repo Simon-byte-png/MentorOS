@@ -1,4 +1,3 @@
-import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -28,36 +27,14 @@ export async function middleware(request: NextRequest) {
       : redirectTo(request, "/login");
   }
 
-  let response = NextResponse.next({ request });
-  const supabase = createServerClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
-    cookies: {
-      getAll() {
-        return request.cookies.getAll();
-      },
-      setAll(cookiesToSet) {
-        cookiesToSet.forEach(({ name, value }) => {
-          request.cookies.set(name, value);
-        });
-        response = NextResponse.next({ request });
-        cookiesToSet.forEach(({ name, value, options }) => {
-          response.cookies.set(name, value, options);
-        });
-      },
-    },
-  });
-
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user && (pathname.startsWith("/chat") || pathname === "/invite")) {
+  if (!hasSupabaseAuthCookie(request) && (pathname.startsWith("/chat") || pathname === "/invite")) {
     return redirectTo(request, "/login");
   }
 
   // TODO: Move active/pending redirects into middleware once access status is
   // available through a signed auth claim or a lightweight profile cache.
   // Server pages enforce active/pending checks today.
-  return response;
+  return NextResponse.next();
 }
 
 export const config = {
@@ -66,6 +43,12 @@ export const config = {
 
 function isAuthRoute(pathname: string): boolean {
   return pathname.startsWith("/chat") || pathname === "/invite" || pathname === "/login";
+}
+
+function hasSupabaseAuthCookie(request: NextRequest): boolean {
+  return request.cookies
+    .getAll()
+    .some((cookie) => cookie.name.startsWith("sb-") && cookie.name.endsWith("-auth-token"));
 }
 
 function redirectTo(request: NextRequest, pathname: "/login") {
