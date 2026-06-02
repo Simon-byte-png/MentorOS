@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import Image from "next/image";
 import { LogOut, MessageSquarePlus } from "lucide-react";
 import type {
   MentorOSPipelineResult,
@@ -296,8 +297,12 @@ export function InteractiveChat() {
         <aside className="hidden w-[320px] shrink-0 border-r border-line bg-white md:flex md:flex-col">
           <div className="px-7 pb-5 pt-8">
             <div className="flex items-center gap-4">
-              <div
-                className="h-[54px] w-[54px] rounded-full border-[13px] border-[#ff7426]"
+              <Image
+                src="/brand/mentoros-chat-icon.png"
+                alt=""
+                width={54}
+                height={54}
+                className="h-[54px] w-[54px] rounded-[12px] object-cover"
                 aria-label="MentorOS"
               />
               <span className="text-[17px] font-medium text-ink">MentorOS</span>
