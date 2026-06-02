@@ -40,7 +40,7 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
 
             {hasAuthError ? (
               <p className="mt-8 border-t border-line pt-5 text-[14px] leading-6 text-muted">
-                注册/登录链接已经失效或无法验证，请重新发送一次。
+                登录验证失败或已经失效，请重新选择一种登录方式。
               </p>
             ) : null}
 
