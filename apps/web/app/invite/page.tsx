@@ -1,9 +1,9 @@
 import { redirect } from "next/navigation";
-import { getCurrentAccess, getRedirectForAccess } from "@/lib/auth/access";
+import { getCurrentPageAccess, getRedirectForAccess } from "@/lib/auth/access";
 import { InviteForm } from "./invite-form";
 
 export default async function InvitePage() {
-  const access = await getCurrentAccess();
+  const access = await getCurrentPageAccess();
   const accessRedirect = getRedirectForAccess(access);
 
   if (accessRedirect === "/login" || accessRedirect === "/chat") {

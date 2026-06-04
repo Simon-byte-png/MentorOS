@@ -4,6 +4,8 @@ import { NextResponse, type NextRequest } from "next/server";
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const SUPABASE_ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 const AUTH_REFRESH_TIMEOUT_MS = 4_000;
+const AUTH_USER_ID_HEADER = "x-mentoros-auth-user-id";
+const AUTH_USER_EMAIL_HEADER = "x-mentoros-auth-user-email";
 
 /** Dev bypass 仅本地有效，production 下即使误配 true 也不生效。 */
 function isDevBypassAllowed(): boolean {
@@ -72,7 +74,7 @@ function hasSupabaseAuthCookie(request: NextRequest): boolean {
 }
 
 async function refreshAuthSession(request: NextRequest) {
-  let response = NextResponse.next({ request });
+  let response = createNextResponse(request);
   const supabase = createServerClient(SUPABASE_URL!, SUPABASE_ANON_KEY!, {
     cookies: {
       getAll() {
@@ -82,7 +84,7 @@ async function refreshAuthSession(request: NextRequest) {
         cookiesToSet.forEach(({ name, value }) => {
           request.cookies.set(name, value);
         });
-        response = NextResponse.next({ request });
+        response = createNextResponse(request);
         cookiesToSet.forEach(({ name, value, options }) => {
           response.cookies.set(name, value, options);
         });
@@ -96,8 +98,14 @@ async function refreshAuthSession(request: NextRequest) {
       AUTH_REFRESH_TIMEOUT_MS,
     );
 
+    const finalResponse = createNextResponse(request, {
+      id: userResult.data.user?.id ?? null,
+      email: userResult.data.user?.email ?? null,
+    });
+    copyResponseCookies(response, finalResponse);
+
     return {
-      response,
+      response: finalResponse,
       verified: true,
       user: userResult.data.user,
     };
@@ -108,6 +116,29 @@ async function refreshAuthSession(request: NextRequest) {
       user: null,
     };
   }
+}
+
+function createNextResponse(
+  request: NextRequest,
+  user: { id: string | null; email: string | null } = { id: null, email: null },
+) {
+  const requestHeaders = new Headers(request.headers);
+  requestHeaders.delete(AUTH_USER_ID_HEADER);
+  requestHeaders.delete(AUTH_USER_EMAIL_HEADER);
+
+  if (user.id) {
+    requestHeaders.set(AUTH_USER_ID_HEADER, user.id);
+  }
+
+  if (user.email) {
+    requestHeaders.set(AUTH_USER_EMAIL_HEADER, user.email);
+  }
+
+  return NextResponse.next({
+    request: {
+      headers: requestHeaders,
+    },
+  });
 }
 
 async function withTimeout<T>(promise: Promise<T>, timeoutMs: number): Promise<T> {

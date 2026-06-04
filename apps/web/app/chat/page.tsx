@@ -1,6 +1,6 @@
 import { InteractiveChat } from "@/components/chat/interactive-chat";
 import {
-  getCurrentAccess,
+  getCurrentPageAccess,
   getRedirectForAccess,
   isDevBypassEnabled,
 } from "@/lib/auth/access";
@@ -8,7 +8,7 @@ import { redirect } from "next/navigation";
 
 export default async function ChatPage() {
   if (!isDevBypassEnabled()) {
-    const access = await getCurrentAccess();
+    const access = await getCurrentPageAccess();
     const accessRedirect = getRedirectForAccess(access);
 
     if (accessRedirect !== "/chat") {
