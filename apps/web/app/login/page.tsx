@@ -1,5 +1,3 @@
-import { redirect } from "next/navigation";
-import { getCurrentAccess, getRedirectForAccess } from "@/lib/auth/access";
 import { LoginForm } from "./login-form";
 
 type LoginPageProps = {
@@ -9,13 +7,6 @@ type LoginPageProps = {
 };
 
 export default async function LoginPage({ searchParams }: LoginPageProps) {
-  const access = await getCurrentAccess();
-  const accessRedirect = getRedirectForAccess(access);
-
-  if (accessRedirect !== "/login") {
-    redirect(accessRedirect);
-  }
-
   const params = await searchParams;
   const hasAuthError = params?.error === "auth";
 

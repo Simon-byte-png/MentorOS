@@ -35,6 +35,12 @@ export async function middleware(request: NextRequest) {
 
   const authResult = await refreshAuthSession(request);
 
+  if (authResult.verified && authResult.user && pathname === "/login") {
+    const redirectResponse = redirectTo(request, "/chat");
+    copyResponseCookies(authResult.response, redirectResponse);
+    return redirectResponse;
+  }
+
   if (authResult.verified && !authResult.user && isProtectedRoute(pathname)) {
     const redirectResponse = redirectTo(request, "/login");
     copyResponseCookies(authResult.response, redirectResponse);
@@ -129,7 +135,7 @@ function copyResponseCookies(from: NextResponse, to: NextResponse) {
   });
 }
 
-function redirectTo(request: NextRequest, pathname: "/login") {
+function redirectTo(request: NextRequest, pathname: "/login" | "/chat") {
   const url = request.nextUrl.clone();
   url.pathname = pathname;
   url.search = "";
