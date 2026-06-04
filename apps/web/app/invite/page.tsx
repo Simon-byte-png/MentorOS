@@ -1,15 +1,6 @@
-import { redirect } from "next/navigation";
-import { getCurrentPageAccess, getRedirectForAccess } from "@/lib/auth/access";
 import { InviteForm } from "./invite-form";
 
 export default async function InvitePage() {
-  const access = await getCurrentPageAccess();
-  const accessRedirect = getRedirectForAccess(access);
-
-  if (accessRedirect === "/login" || accessRedirect === "/chat") {
-    redirect(accessRedirect);
-  }
-
   return (
     <main className="min-h-screen bg-paper text-ink">
       <div className="mx-auto flex min-h-screen max-w-7xl flex-col px-6 py-7 md:px-10">

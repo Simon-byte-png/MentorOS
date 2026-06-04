@@ -1,10 +1,6 @@
 import type { SupabaseClient, User } from "@supabase/supabase-js";
-import { getUserProfile, type UserProfile } from "@mentoros/db";
-import { headers } from "next/headers";
+import type { UserProfile } from "@mentoros/db";
 import { createClient } from "@/lib/supabase/server";
-
-const AUTH_USER_ID_HEADER = "x-mentoros-auth-user-id";
-const AUTH_USER_EMAIL_HEADER = "x-mentoros-auth-user-email";
 
 export type CurrentAccess = {
   user: User | null;
@@ -57,26 +53,6 @@ export async function getCurrentAccess() {
   const profile = await getCurrentUserProfile(supabase, user.id);
 
   return { user, profile } satisfies CurrentAccess;
-}
-
-export async function getCurrentPageAccess() {
-  const headerStore = await headers();
-  const middlewareUserId = headerStore.get(AUTH_USER_ID_HEADER);
-
-  if (middlewareUserId) {
-    const middlewareUserEmail = headerStore.get(AUTH_USER_EMAIL_HEADER);
-    const profile = await getUserProfile(middlewareUserId);
-
-    return {
-      user: {
-        id: middlewareUserId,
-        email: middlewareUserEmail,
-      } as User,
-      profile,
-    } satisfies CurrentAccess;
-  }
-
-  return getCurrentAccess();
 }
 
 export function getRedirectForAccess(access: CurrentAccess): "/login" | "/invite" | "/chat" {

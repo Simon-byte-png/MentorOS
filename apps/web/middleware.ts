@@ -37,21 +37,24 @@ export async function middleware(request: NextRequest) {
 
   const authResult = await refreshAuthSession(request);
 
-  if (authResult.verified && authResult.user && pathname === "/login") {
-    const redirectResponse = redirectTo(request, "/chat");
-    copyResponseCookies(authResult.response, redirectResponse);
-    return redirectResponse;
-  }
-
   if (authResult.verified && !authResult.user && isProtectedRoute(pathname)) {
     const redirectResponse = redirectTo(request, "/login");
     copyResponseCookies(authResult.response, redirectResponse);
     return redirectResponse;
   }
 
-  // TODO: Move active/pending redirects into middleware once access status is
-  // available through a signed auth claim or a lightweight profile cache.
-  // Server pages enforce active/pending checks today.
+  if (authResult.verified && authResult.user) {
+    const accessRedirect = authResult.accessRedirect;
+
+    if (pathname === "/login" || (pathname !== accessRedirect && isProtectedRoute(pathname))) {
+      const redirectResponse = redirectTo(request, accessRedirect);
+      copyResponseCookies(authResult.response, redirectResponse);
+      return redirectResponse;
+    }
+  }
+
+  // Middleware owns page-level auth redirects so Server Components do not race
+  // against the refreshed Supabase cookies in the same navigation.
   return authResult.response;
 }
 
@@ -98,6 +101,10 @@ async function refreshAuthSession(request: NextRequest) {
       AUTH_REFRESH_TIMEOUT_MS,
     );
 
+    const user = userResult.data.user;
+    const accessRedirect = user
+      ? await getAccessRedirect(supabase, user.id)
+      : "/invite";
     const finalResponse = createNextResponse(request, {
       id: userResult.data.user?.id ?? null,
       email: userResult.data.user?.email ?? null,
@@ -108,12 +115,14 @@ async function refreshAuthSession(request: NextRequest) {
       response: finalResponse,
       verified: true,
       user: userResult.data.user,
+      accessRedirect,
     };
   } catch {
     return {
       response,
       verified: false,
       user: null,
+      accessRedirect: "/invite",
     };
   }
 }
@@ -166,7 +175,20 @@ function copyResponseCookies(from: NextResponse, to: NextResponse) {
   });
 }
 
-function redirectTo(request: NextRequest, pathname: "/login" | "/chat") {
+async function getAccessRedirect(
+  supabase: ReturnType<typeof createServerClient>,
+  userId: string,
+): Promise<"/invite" | "/chat"> {
+  const { data } = await supabase
+    .from("user_profiles")
+    .select("access_status")
+    .eq("user_id", userId)
+    .maybeSingle();
+
+  return data?.access_status === "active" ? "/chat" : "/invite";
+}
+
+function redirectTo(request: NextRequest, pathname: "/login" | "/invite" | "/chat") {
   const url = request.nextUrl.clone();
   url.pathname = pathname;
   url.search = "";
