@@ -7,6 +7,13 @@ const AUTH_REFRESH_TIMEOUT_MS = 4_000;
 const AUTH_USER_ID_HEADER = "x-mentoros-auth-user-id";
 const AUTH_USER_EMAIL_HEADER = "x-mentoros-auth-user-email";
 
+type AuthRefreshResult = {
+  response: NextResponse;
+  verified: boolean;
+  user: { id: string; email?: string | null } | null;
+  accessRedirect: "/invite" | "/chat";
+};
+
 /** Dev bypass 仅本地有效，production 下即使误配 true 也不生效。 */
 function isDevBypassAllowed(): boolean {
   const isProduction =
@@ -31,7 +38,15 @@ export async function middleware(request: NextRequest) {
       : redirectTo(request, "/login");
   }
 
-  if (!hasSupabaseAuthCookie(request) && isProtectedRoute(pathname)) {
+  const hasAuthCookie = hasSupabaseAuthCookie(request);
+
+  if (!hasAuthCookie && isProtectedRoute(pathname)) {
+    logAuthDecision({
+      pathname,
+      hasAuthCookie,
+      reason: "protected-route-missing-cookie",
+      redirectTo: "/login",
+    });
     return redirectTo(request, "/login");
   }
 
@@ -40,6 +55,14 @@ export async function middleware(request: NextRequest) {
   if (authResult.verified && !authResult.user && isProtectedRoute(pathname)) {
     const redirectResponse = redirectTo(request, "/login");
     copyResponseCookies(authResult.response, redirectResponse);
+    logAuthDecision({
+      pathname,
+      hasAuthCookie,
+      reason: "protected-route-no-user",
+      verified: authResult.verified,
+      hasUser: false,
+      redirectTo: "/login",
+    });
     return redirectResponse;
   }
 
@@ -49,12 +72,29 @@ export async function middleware(request: NextRequest) {
     if (pathname === "/login" || (pathname !== accessRedirect && isProtectedRoute(pathname))) {
       const redirectResponse = redirectTo(request, accessRedirect);
       copyResponseCookies(authResult.response, redirectResponse);
+      logAuthDecision({
+        pathname,
+        hasAuthCookie,
+        reason: pathname === "/login" ? "login-with-user" : "protected-route-access-mismatch",
+        verified: authResult.verified,
+        hasUser: true,
+        accessRedirect,
+        redirectTo: accessRedirect,
+      });
       return redirectResponse;
     }
   }
 
   // Middleware owns page-level auth redirects so Server Components do not race
   // against the refreshed Supabase cookies in the same navigation.
+  logAuthDecision({
+    pathname,
+    hasAuthCookie,
+    reason: "allow",
+    verified: authResult.verified,
+    hasUser: Boolean(authResult.user),
+    accessRedirect: authResult.accessRedirect,
+  });
   return authResult.response;
 }
 
@@ -76,7 +116,7 @@ function hasSupabaseAuthCookie(request: NextRequest): boolean {
     .some((cookie) => cookie.name.startsWith("sb-") && cookie.name.endsWith("-auth-token"));
 }
 
-async function refreshAuthSession(request: NextRequest) {
+async function refreshAuthSession(request: NextRequest): Promise<AuthRefreshResult> {
   let response = createNextResponse(request);
   const supabase = createServerClient(SUPABASE_URL!, SUPABASE_ANON_KEY!, {
     cookies: {
@@ -102,7 +142,7 @@ async function refreshAuthSession(request: NextRequest) {
     );
 
     const user = userResult.data.user;
-    const accessRedirect = user
+    const accessRedirect: "/invite" | "/chat" = user
       ? await getAccessRedirect(supabase, user.id)
       : "/invite";
     const finalResponse = createNextResponse(request, {
@@ -198,4 +238,16 @@ function redirectTo(request: NextRequest, pathname: "/login" | "/invite" | "/cha
   }
 
   return NextResponse.redirect(url);
+}
+
+function logAuthDecision(details: {
+  pathname: string;
+  hasAuthCookie: boolean;
+  reason: string;
+  verified?: boolean;
+  hasUser?: boolean;
+  accessRedirect?: "/invite" | "/chat";
+  redirectTo?: "/login" | "/invite" | "/chat";
+}) {
+  console.info("[auth/middleware]", details);
 }
