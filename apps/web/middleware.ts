@@ -38,18 +38,6 @@ export async function middleware(request: NextRequest) {
       : redirectTo(request, "/login");
   }
 
-  const hasAuthCookie = hasSupabaseAuthCookie(request);
-
-  if (!hasAuthCookie && isProtectedRoute(pathname)) {
-    logAuthDecision({
-      pathname,
-      hasAuthCookie,
-      reason: "protected-route-missing-cookie",
-      redirectTo: "/login",
-    });
-    return redirectTo(request, "/login");
-  }
-
   const authResult = await refreshAuthSession(request);
 
   if (authResult.verified && !authResult.user && isProtectedRoute(pathname)) {
@@ -57,7 +45,6 @@ export async function middleware(request: NextRequest) {
     copyResponseCookies(authResult.response, redirectResponse);
     logAuthDecision({
       pathname,
-      hasAuthCookie,
       reason: "protected-route-no-user",
       verified: authResult.verified,
       hasUser: false,
@@ -74,7 +61,6 @@ export async function middleware(request: NextRequest) {
       copyResponseCookies(authResult.response, redirectResponse);
       logAuthDecision({
         pathname,
-        hasAuthCookie,
         reason: pathname === "/login" ? "login-with-user" : "protected-route-access-mismatch",
         verified: authResult.verified,
         hasUser: true,
@@ -89,7 +75,6 @@ export async function middleware(request: NextRequest) {
   // against the refreshed Supabase cookies in the same navigation.
   logAuthDecision({
     pathname,
-    hasAuthCookie,
     reason: "allow",
     verified: authResult.verified,
     hasUser: Boolean(authResult.user),
@@ -108,12 +93,6 @@ function isAuthRoute(pathname: string): boolean {
 
 function isProtectedRoute(pathname: string): boolean {
   return pathname.startsWith("/chat") || pathname === "/invite";
-}
-
-function hasSupabaseAuthCookie(request: NextRequest): boolean {
-  return request.cookies
-    .getAll()
-    .some((cookie) => cookie.name.startsWith("sb-") && cookie.name.endsWith("-auth-token"));
 }
 
 async function refreshAuthSession(request: NextRequest): Promise<AuthRefreshResult> {
@@ -233,16 +212,21 @@ function redirectTo(request: NextRequest, pathname: "/login" | "/invite" | "/cha
   url.pathname = pathname;
   url.search = "";
 
-  if (request.nextUrl.pathname !== "/login") {
-    url.searchParams.set("next", request.nextUrl.pathname);
+  if (pathname === "/login" && request.nextUrl.pathname !== "/login") {
+    url.searchParams.set("next", getSafeNextPath(request));
   }
 
   return NextResponse.redirect(url);
 }
 
+function getSafeNextPath(request: NextRequest) {
+  const nextPath = `${request.nextUrl.pathname}${request.nextUrl.search}`;
+
+  return nextPath.startsWith("/login") ? "/chat" : nextPath;
+}
+
 function logAuthDecision(details: {
   pathname: string;
-  hasAuthCookie: boolean;
   reason: string;
   verified?: boolean;
   hasUser?: boolean;
