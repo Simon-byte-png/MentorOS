@@ -12,6 +12,7 @@ const DEFAULT_FLASH_MODEL = "deepseek-v4-flash";
 const DEFAULT_PRO_MODEL = "deepseek-v4-pro";
 const DEFAULT_MAX_TOKENS = 1024;
 const DEFAULT_TEMPERATURE = 0.3;
+const EMPTY_COMPLETION_MAX_ATTEMPTS = 3;
 
 export interface DeepSeekProviderConfig {
   apiKey?: string;
@@ -87,22 +88,29 @@ export class DeepSeekProvider implements LLMProvider {
     messages: LLMMessage[],
     options: LLMCallOptions = {}
   ): Promise<LLMTextResult> {
-    const response = await this.callChatCompletions(
-      options.jsonMode ? withJsonInstruction(messages) : messages,
-      options
-    );
-    const choice = response.choices?.[0];
-    const text = choice?.message?.content;
+    const requestMessages = options.jsonMode ? withJsonInstruction(messages) : messages;
+    let lastResponse: DeepSeekChatCompletionResponse | null = null;
 
-    if (typeof text !== "string" || !text.trim()) {
-      throw new DeepSeekAPIError("DeepSeek response did not include a text completion.");
+    // DeepSeek JSON Output can occasionally return a 200 with empty content.
+    for (let attempt = 1; attempt <= EMPTY_COMPLETION_MAX_ATTEMPTS; attempt += 1) {
+      const response = await this.callChatCompletions(requestMessages, options);
+      lastResponse = response;
+      const choice = response.choices?.[0];
+      const text = choice?.message?.content;
+
+      if (typeof text === "string" && text.trim()) {
+        return {
+          text,
+          usage: this.mapUsage(response, options),
+          raw: buildSafeRawSummary(response)
+        };
+      }
     }
 
-    return {
-      text,
-      usage: this.mapUsage(response, options),
-      raw: buildSafeRawSummary(response)
-    };
+    throw new DeepSeekAPIError(
+      `DeepSeek response did not include a text completion. ${formatEmptyCompletionSummary(lastResponse)}`,
+      { code: "empty_completion" }
+    );
   }
 
   async callJson<T = unknown>(
@@ -349,6 +357,30 @@ function buildSafeRawSummary(response: DeepSeekChatCompletionResponse): SafeRawS
         }
       : undefined
   };
+}
+
+function formatEmptyCompletionSummary(
+  response: DeepSeekChatCompletionResponse | null
+): string {
+  if (!response) {
+    return "No response was captured.";
+  }
+
+  const summary = buildSafeRawSummary(response);
+  const details = [
+    summary.model ? `model=${summary.model}` : undefined,
+    summary.finishReason ? `finish_reason=${summary.finishReason}` : undefined,
+    summary.usage?.promptTokens !== undefined
+      ? `prompt_tokens=${summary.usage.promptTokens}`
+      : undefined,
+    summary.usage?.completionTokens !== undefined
+      ? `completion_tokens=${summary.usage.completionTokens}`
+      : undefined
+  ].filter(Boolean);
+
+  return details.length > 0
+    ? details.join(", ")
+    : "No response summary was available.";
 }
 
 function asNumber(value: unknown): number | undefined {
